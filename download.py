@@ -1,35 +1,32 @@
-# скрипт чтобы скачать датасет CelebA и сохранить первые N картинок
-# размером 256х256 в data/faces/
+# torchvision CelebA качается с Google Drive и упёрлась в quota
+# переключилась на HuggingFace, там тот же CelebA но через нормальный API
+# сохраняем первые N картинок 256x256 в data/faces/
 
 import os
-import numpy as np
 import cv2
-from torchvision import datasets, transforms
+import numpy as np
+from datasets import load_dataset
 
 OUT = "data/faces"
-N = 5000        # сколько картинок берём
+N = 5000
 SIZE = 256
 
 os.makedirs(OUT, exist_ok=True)
 
-# сначала resize по короткой стороне, потом центр-кроп
-tfm = transforms.Compose([
-    transforms.Resize(SIZE),
-    transforms.CenterCrop(SIZE),
-])
+print("качаю celebA с HuggingFace (streaming)")
+ds = load_dataset("huggan/CelebA-faces", split="train", streaming=True)
 
-ds = datasets.CelebA(root="data/celeba_raw", split="train",
-                     download=True, transform=tfm)
-print("всего в CelebA train:", len(ds))
-print("сохраняем первые", N)
-
-for i in range(N):
-    img, _ = ds[i]                # img это PIL
-    arr = np.array(img)           # RGB
+i = 0
+for item in ds:
+    if i >= N:
+        break
+    img = item["image"]            # PIL RGB
+    img = img.resize((SIZE, SIZE))
+    arr = np.array(img)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-    name = str(i).zfill(6) + ".jpg"
-    cv2.imwrite(os.path.join(OUT, name), bgr)
+    cv2.imwrite(os.path.join(OUT, str(i).zfill(6) + ".jpg"), bgr)
+    i += 1
     if i % 500 == 0:
         print(i)
 
-print("готово")
+print("готово:", i)
