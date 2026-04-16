@@ -31,3 +31,16 @@ def add_jpeg(img, quality):
     pil.save(buf, format="JPEG", quality=quality)
     buf.seek(0)
     return np.array(Image.open(buf))
+
+
+def motion_blur(img, size=5):
+    # размытие от движения, просто прямая линия в ядре
+    import random
+    k = np.zeros((size, size), dtype=np.float32)
+    angle = random.uniform(0, 180)
+    c = size // 2
+    k[c, :] = 1.0 / size
+    M = cv2.getRotationMatrix2D((c, c), angle, 1.0)
+    k = cv2.warpAffine(k, M, (size, size))
+    k /= k.sum() + 1e-8
+    return cv2.filter2D(img, -1, k)
