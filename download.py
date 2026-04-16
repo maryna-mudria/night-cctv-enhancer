@@ -1,33 +1,33 @@
-# CelebA не качается вообще: гугл дал quota, а с huggingface датасет убрали
-# пробую LFW (Labeled Faces in the Wild), он тоже из лиц и лежит на universe-серверах
-# первые N картинок сохраняем 256x256 в data/faces/
+# LFW тоже удалили из torchvision... беру Oxford-IIIT Pet
+# 37 пород котов и собак, ~7400 картинок, стабильно качается из университета
+# для super-resolution контент неважен, модель учится восстанавливать детали текстуры
 
 import os
 import cv2
 import numpy as np
 from torchvision import datasets, transforms
 
-OUT = "data/faces"
+OUT = "data/faces"           # оставляю старое имя папки чтобы не править dataset.py
 N = 5000
 SIZE = 256
 
 os.makedirs(OUT, exist_ok=True)
 
-# resize по короткой стороне до SIZE и центр-кроп квадрат
+# resize по короткой стороне + центр-кроп до квадрата
 tfm = transforms.Compose([
     transforms.Resize(SIZE),
     transforms.CenterCrop(SIZE),
 ])
 
-print("качаю LFW")
-ds = datasets.LFWPeople(root="data/lfw_raw", download=True, transform=tfm)
-print("всего картинок в LFW:", len(ds))
+print("качаю Oxford Pets")
+ds = datasets.OxfordIIITPet(root="data/pets_raw", download=True, transform=tfm)
+print("всего картинок:", len(ds))
 
 n = min(N, len(ds))
 print("сохраняем", n)
 
 for i in range(n):
-    img, _ = ds[i]            # PIL, может быть grayscale
+    img, _ = ds[i]
     arr = np.array(img)
     if arr.ndim == 2:
         arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2RGB)
