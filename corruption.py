@@ -1,8 +1,10 @@
 # функции которые "портят" картинку чтобы она была похожа на
-# кадр с обычной IP камеры ночью: низкое разрешение и шум
+# кадр с обычной IP камеры ночью: низкое разрешение, шум, jpeg-артефакты
 
 import cv2
 import numpy as np
+from io import BytesIO
+from PIL import Image
 
 
 def downsample(img, scale=4):
@@ -19,3 +21,13 @@ def add_gaussian_noise(img, sigma):
     out = img.astype(np.float32) + noise
     out = np.clip(out, 0, 255)
     return out.astype(np.uint8)
+
+
+def add_jpeg(img, quality):
+    # сохраняем в jpeg с низким качеством и читаем обратно
+    # чтобы получить jpeg-артефакты (блоки 8x8)
+    pil = Image.fromarray(img)
+    buf = BytesIO()
+    pil.save(buf, format="JPEG", quality=quality)
+    buf.seek(0)
+    return np.array(Image.open(buf))
