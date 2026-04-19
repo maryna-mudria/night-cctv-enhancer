@@ -1,9 +1,15 @@
 # скрипт обучения модели
+# добавила TensorBoard чтобы видеть train/val loss на графике
+# и save-best — сохраняем модель только когда val_loss улучшился
+# (Ян рассказывал байку как он обучал сеть 10 дней и забыл сохранить веса)
 
 import os
+import random
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
+from torch.utils.tensorboard import SummaryWriter
 
 from dataset import CCTVFaces
 from model import UNet
@@ -15,7 +21,13 @@ BATCH_SIZE = 16
 LR = 1e-3
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-torch.manual_seed(42)
+# фиксируем все сиды чтобы результаты были воспроизводимы
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
 print("device:", DEVICE)
 
@@ -35,6 +47,15 @@ val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_worker
 model = UNet().to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 criterion = nn.MSELoss()
+
+# TensorBoard — логи пишутся в runs/unet
+# смотреть: tensorboard --logdir runs
+os.makedirs("runs", exist_ok=True)
+writer = SummaryWriter("runs/unet")
+
+# готовим папку для весов и трекаем лучший val_loss
+os.makedirs("models", exist_ok=True)
+best_val = float("inf")
 
 # цикл обучения
 for epoch in range(EPOCHS):
@@ -70,9 +91,17 @@ for epoch in range(EPOCHS):
             count_v += lr.size(0)
     avg_val = total_v / count_v
 
+    # логируем в TensorBoard
+    writer.add_scalar("loss/train", avg_train, epoch)
+    writer.add_scalar("loss/val", avg_val, epoch)
+
     print("epoch", epoch, "train_loss", round(avg_train, 4), "val_loss", round(avg_val, 4))
 
-# сохраняем модель
-os.makedirs("models", exist_ok=True)
-torch.save(model.state_dict(), "models/unet.pth")
-print("сохранила в models/unet.pth")
+    # сохраняем только если это лучший val_loss за всё время
+    if avg_val < best_val:
+        best_val = avg_val
+        torch.save(model.state_dict(), "models/unet.pth")
+        print("  -> новый лучший val_loss, сохранила в models/unet.pth")
+
+writer.close()
+print("обучение закончено, лучший val_loss:", round(best_val, 4))
