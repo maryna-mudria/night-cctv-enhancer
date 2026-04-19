@@ -1,0 +1,17 @@
+# результаты evaluate.py (val split, 200 картинок из Oxford-IIIT Pet)
+# запускала 19.04.2026 на CPU
+
+device: cpu
+картинок в val: 368
+оцениваем на 200 картинках
+
+метод                    PSNR     SSIM
+bicubic                  22.28    0.4947
+gaussian+bicubic         22.89    0.5650
+bilateral+bicubic        23.32    0.5811
+UNet                     23.69    0.6057
+
+# UNet обходит все классические бейзлайны и по PSNR, и по SSIM.
+# разница с лучшим классическим (bilateral+bicubic):
+#   PSNR  +0.37 дБ
+#   SSIM  +0.0246
